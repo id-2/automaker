@@ -323,8 +323,18 @@ class FeatureExecutor {
           }
         }
 
-        // Use content blocks instead of plain text
-        prompt = contentBlocks;
+        // Wrap content blocks in async generator for SDK (required format for multimodal prompts)
+        prompt = (async function* () {
+          yield {
+            type: "user",
+            session_id: "",
+            message: {
+              role: "user",
+              content: contentBlocks,
+            },
+            parent_tool_use_id: null,
+          };
+        })();
       }
 
       // Planning: Analyze the codebase and create implementation plan
@@ -356,6 +366,15 @@ class FeatureExecutor {
       let currentQuery;
       isCodex = this.isCodexModel(feature);
 
+      // Ensure provider auth is available (especially for Claude SDK)
+      const provider = this.getProvider(feature);
+      if (provider?.ensureAuthEnv && !provider.ensureAuthEnv()) {
+        const authMsg =
+          "Missing Anthropic auth. Set ANTHROPIC_API_KEY or run `claude login` so ~/.claude/config.json contains oauth_token.";
+        console.error(`[FeatureExecutor] ${authMsg}`);
+        throw new Error(authMsg);
+      }
+
       // Validate that model string matches the provider
       if (isCodex) {
         // Ensure model string is actually a Codex model, not a Claude model
@@ -367,7 +386,6 @@ class FeatureExecutor {
         
         // Use Codex provider for OpenAI models
         console.log(`[FeatureExecutor] Using Codex provider for model: ${modelString}`);
-        const provider = this.getProvider(feature);
         currentQuery = provider.executeQuery({
           prompt,
           model: modelString,
@@ -712,8 +730,18 @@ class FeatureExecutor {
           }
         }
 
-        // Use content blocks instead of plain text
-        prompt = contentBlocks;
+        // Wrap content blocks in async generator for SDK (required format for multimodal prompts)
+        prompt = (async function* () {
+          yield {
+            type: "user",
+            session_id: "",
+            message: {
+              role: "user",
+              content: contentBlocks,
+            },
+            parent_tool_use_id: null,
+          };
+        })();
       }
 
       // Use appropriate provider based on model type
