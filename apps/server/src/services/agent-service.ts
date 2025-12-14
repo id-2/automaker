@@ -46,6 +46,7 @@ interface SessionMetadata {
   archived?: boolean;
   tags?: string[];
   model?: string;
+  sdkSessionId?: string; // Claude SDK session ID for conversation continuity
 }
 
 export class AgentService {
@@ -76,11 +77,15 @@ export class AgentService {
   }) {
     if (!this.sessions.has(sessionId)) {
       const messages = await this.loadSession(sessionId);
+      const metadata = await this.loadMetadata();
+      const sessionMetadata = metadata[sessionId];
+
       this.sessions.set(sessionId, {
         messages,
         isRunning: false,
         abortController: null,
         workingDirectory: workingDirectory || process.cwd(),
+        sdkSessionId: sessionMetadata?.sdkSessionId, // Load persisted SDK session ID
       });
     }
 
@@ -223,12 +228,14 @@ export class AgentService {
       const toolUses: Array<{ name: string; input: unknown }> = [];
 
       for await (const msg of stream) {
-        // Capture SDK session ID from any message
+        // Capture SDK session ID from any message and persist it
         if (msg.session_id && !session.sdkSessionId) {
           session.sdkSessionId = msg.session_id;
           console.log(
             `[AgentService] Captured SDK session ID: ${msg.session_id}`
           );
+          // Persist the SDK session ID to ensure conversation continuity across server restarts
+          await this.updateSession(sessionId, { sdkSessionId: msg.session_id });
         }
 
         if (msg.type === "assistant") {
