@@ -811,7 +811,7 @@ export const KanbanCard = memo(function KanbanCard({
                 <Button
                   variant="default"
                   size="sm"
-                  className="flex-1 h-7 text-[11px] bg-[var(--status-info)] hover:bg-[var(--status-info)]/90"
+                  className="flex-1 h-7 text-[11px] bg-primary hover:bg-primary/90"
                   onClick={(e) => {
                     e.stopPropagation();
                     onViewOutput();
@@ -898,9 +898,9 @@ export const KanbanCard = memo(function KanbanCard({
               ) : null}
               {onViewOutput && !feature.skipTests && (
                 <Button
-                  variant="ghost"
+                  variant="default"
                   size="sm"
-                  className="h-7 text-[11px] px-2"
+                  className="h-7 text-[11px] px-2 bg-primary hover:bg-primary/90"
                   onClick={(e) => {
                     e.stopPropagation();
                     onViewOutput();

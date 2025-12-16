@@ -106,6 +106,7 @@ https://discord.gg/jjem7aEDKU
 - Node.js 18+
 - npm
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- [GitHub CLI (gh)](https://cli.github.com/) - Optional but required for creating pull requests from within the app
 
 ### Quick Start
 

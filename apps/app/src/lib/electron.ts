@@ -224,7 +224,8 @@ export interface AutoModeAPI {
   runFeature: (
     projectPath: string,
     featureId: string,
-    useWorktrees?: boolean
+    useWorktrees?: boolean,
+    worktreePath?: string
   ) => Promise<{ success: boolean; passes?: boolean; error?: string }>;
   verifyFeature: (
     projectPath: string,
@@ -334,6 +335,12 @@ export interface ElectronAPI {
         hasEnvApiKey?: boolean;
         hasEnvOAuthToken?: boolean;
       };
+      error?: string;
+    }>;
+    getGhStatus: () => Promise<{
+      success: boolean;
+      installed: boolean;
+      version?: string;
       error?: string;
     }>;
     installClaude: () => Promise<{
@@ -858,6 +865,12 @@ interface SetupAPI {
     };
     error?: string;
   }>;
+  getGhStatus: () => Promise<{
+    success: boolean;
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }>;
   installClaude: () => Promise<{
     success: boolean;
     message?: string;
@@ -920,6 +933,14 @@ function createMockSetupAPI(): SetupAPI {
           hasCliAuth: false,
           hasRecentActivity: false,
         },
+      };
+    },
+
+    getGhStatus: async () => {
+      console.log("[Mock] Getting GitHub CLI status");
+      return {
+        success: true,
+        installed: false,
       };
     },
 
@@ -1048,6 +1069,84 @@ function createMockWorktreeAPI(): WorktreeAPI {
     list: async (projectPath: string) => {
       console.log("[Mock] Listing worktrees:", { projectPath });
       return { success: true, worktrees: [] };
+    },
+
+    listAll: async (projectPath: string, includeDetails?: boolean) => {
+      console.log("[Mock] Listing all worktrees:", { projectPath, includeDetails });
+      return {
+        success: true,
+        worktrees: [
+          { path: projectPath, branch: "main", isMain: true, hasChanges: false, changedFilesCount: 0 },
+        ],
+      };
+    },
+
+    create: async (projectPath: string, branchName: string, baseBranch?: string) => {
+      console.log("[Mock] Creating worktree:", { projectPath, branchName, baseBranch });
+      return {
+        success: true,
+        worktree: {
+          path: `${projectPath}/.worktrees/${branchName.replace(/[^a-zA-Z0-9_-]/g, "-")}`,
+          branch: branchName,
+          isNew: true,
+        },
+      };
+    },
+
+    delete: async (projectPath: string, worktreePath: string, deleteBranch?: boolean) => {
+      console.log("[Mock] Deleting worktree:", { projectPath, worktreePath, deleteBranch });
+      return {
+        success: true,
+        deleted: {
+          worktreePath,
+          branch: deleteBranch ? "feature/mock" : null,
+        },
+      };
+    },
+
+    commit: async (worktreePath: string, message: string) => {
+      console.log("[Mock] Committing worktree:", { worktreePath, message });
+      return {
+        success: true,
+        result: {
+          committed: true,
+          commitHash: "abc1234",
+          branch: "feature/mock",
+          message,
+        },
+      };
+    },
+
+    push: async (worktreePath: string, force?: boolean) => {
+      console.log("[Mock] Pushing worktree:", { worktreePath, force });
+      return {
+        success: true,
+        result: {
+          branch: "feature/mock",
+          pushed: true,
+        },
+      };
+    },
+
+    createPR: async (worktreePath: string, options?: {
+      commitMessage?: string;
+      prTitle?: string;
+      prBody?: string;
+      baseBranch?: string;
+      draft?: boolean;
+    }) => {
+      console.log("[Mock] Creating PR from worktree:", { worktreePath, options });
+      return {
+        success: true,
+        result: {
+          branch: "feature/mock",
+          committed: true,
+          commitHash: "abc1234",
+          pushed: true,
+          prUrl: "https://github.com/mock/repo/pull/1",
+          prCreated: true,
+        },
+      };
     },
 
     getDiffs: async (projectPath: string, featureId: string) => {
@@ -1185,7 +1284,8 @@ function createMockAutoModeAPI(): AutoModeAPI {
     runFeature: async (
       projectPath: string,
       featureId: string,
-      useWorktrees?: boolean
+      useWorktrees?: boolean,
+      worktreePath?: string
     ) => {
       if (mockRunningFeatures.has(featureId)) {
         return {

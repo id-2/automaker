@@ -339,7 +339,8 @@ export interface AutoModeAPI {
   runFeature: (
     projectPath: string,
     featureId: string,
-    useWorktrees?: boolean
+    useWorktrees?: boolean,
+    worktreePath?: string
   ) => Promise<{
     success: boolean;
     passes?: boolean;
@@ -569,6 +570,15 @@ export interface FileDiffResult {
   error?: string;
 }
 
+export interface WorktreeListItem {
+  path: string;
+  branch: string;
+  isMain: boolean;
+  hasChanges?: boolean;
+  changedFilesCount?: number;
+  aheadBehind?: { ahead: number; behind: number };
+}
+
 export interface WorktreeAPI {
   // Revert feature changes by removing the worktree
   revertFeature: (
@@ -617,6 +627,97 @@ export interface WorktreeAPI {
   list: (projectPath: string) => Promise<{
     success: boolean;
     worktrees?: WorktreeInfo[];
+    error?: string;
+  }>;
+
+  // List all worktrees with details (for worktree selector)
+  listAll: (
+    projectPath: string,
+    includeDetails?: boolean
+  ) => Promise<{
+    success: boolean;
+    worktrees?: WorktreeListItem[];
+    error?: string;
+  }>;
+
+  // Create a new worktree
+  create: (
+    projectPath: string,
+    branchName: string,
+    baseBranch?: string
+  ) => Promise<{
+    success: boolean;
+    worktree?: {
+      path: string;
+      branch: string;
+      isNew: boolean;
+    };
+    error?: string;
+  }>;
+
+  // Delete a worktree
+  delete: (
+    projectPath: string,
+    worktreePath: string,
+    deleteBranch?: boolean
+  ) => Promise<{
+    success: boolean;
+    deleted?: {
+      worktreePath: string;
+      branch: string | null;
+    };
+    error?: string;
+  }>;
+
+  // Commit changes in a worktree
+  commit: (
+    worktreePath: string,
+    message: string
+  ) => Promise<{
+    success: boolean;
+    result?: {
+      committed: boolean;
+      commitHash?: string;
+      branch?: string;
+      message?: string;
+    };
+    error?: string;
+  }>;
+
+  // Push a worktree branch to remote
+  push: (
+    worktreePath: string,
+    force?: boolean
+  ) => Promise<{
+    success: boolean;
+    result?: {
+      branch: string;
+      pushed: boolean;
+    };
+    error?: string;
+  }>;
+
+  // Create a pull request from a worktree
+  createPR: (
+    worktreePath: string,
+    options?: {
+      commitMessage?: string;
+      prTitle?: string;
+      prBody?: string;
+      baseBranch?: string;
+      draft?: boolean;
+    }
+  ) => Promise<{
+    success: boolean;
+    result?: {
+      branch: string;
+      committed: boolean;
+      commitHash?: string;
+      pushed: boolean;
+      prUrl?: string;
+      prCreated: boolean;
+      prError?: string;
+    };
     error?: string;
   }>;
 

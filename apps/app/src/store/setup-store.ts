@@ -45,6 +45,7 @@ export type SetupStep =
   | "welcome"
   | "claude_detect"
   | "claude_auth"
+  | "gh_setup"
   | "complete";
 
 export interface SetupState {

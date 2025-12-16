@@ -7,12 +7,14 @@ interface UseBoardColumnFeaturesProps {
   features: Feature[];
   runningAutoTasks: string[];
   searchQuery: string;
+  currentWorktree: string | null; // null = main branch, string = worktree path
 }
 
 export function useBoardColumnFeatures({
   features,
   runningAutoTasks,
   searchQuery,
+  currentWorktree,
 }: UseBoardColumnFeaturesProps) {
   // Memoize column features to prevent unnecessary re-renders
   const columnFeaturesMap = useMemo(() => {
@@ -26,13 +28,33 @@ export function useBoardColumnFeatures({
 
     // Filter features by search query (case-insensitive)
     const normalizedQuery = searchQuery.toLowerCase().trim();
-    const filteredFeatures = normalizedQuery
+    let filteredFeatures = normalizedQuery
       ? features.filter(
           (f) =>
             f.description.toLowerCase().includes(normalizedQuery) ||
             f.category?.toLowerCase().includes(normalizedQuery)
         )
       : features;
+
+    // Filter by worktree:
+    // - Features in backlog (no worktreePath) are always shown regardless of selected worktree
+    // - Features with a worktreePath are only shown when the matching worktree is selected
+    // - When main is selected (currentWorktree = null), show features without worktreePath or main branch features
+    filteredFeatures = filteredFeatures.filter((f) => {
+      // Backlog features (no worktreePath) should always be visible
+      if (!f.worktreePath) {
+        return true;
+      }
+
+      // Feature has a worktree - check if it matches selected worktree
+      if (currentWorktree === null) {
+        // Main is selected - only show features without worktree or explicitly on main
+        return false;
+      }
+
+      // A specific worktree is selected - only show features on that worktree
+      return f.worktreePath === currentWorktree;
+    });
 
     filteredFeatures.forEach((f) => {
       // If feature has a running agent, always show it in "in_progress"
@@ -59,7 +81,7 @@ export function useBoardColumnFeatures({
     });
 
     return map;
-  }, [features, runningAutoTasks, searchQuery]);
+  }, [features, runningAutoTasks, searchQuery, currentWorktree]);
 
   const getColumnFeatures = useCallback(
     (columnId: ColumnId) => {

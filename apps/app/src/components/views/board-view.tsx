@@ -30,6 +30,11 @@ import {
   FeatureSuggestionsDialog,
   FollowUpDialog,
 } from "./board-view/dialogs";
+import { CreateWorktreeDialog } from "./board-view/dialogs/create-worktree-dialog";
+import { DeleteWorktreeDialog } from "./board-view/dialogs/delete-worktree-dialog";
+import { CommitWorktreeDialog } from "./board-view/dialogs/commit-worktree-dialog";
+import { CreatePRDialog } from "./board-view/dialogs/create-pr-dialog";
+import { WorktreeSelector } from "./board-view/components";
 import { COLUMNS } from "./board-view/constants";
 import {
   useBoardFeatures,
@@ -56,6 +61,7 @@ export function BoardView() {
     setKanbanCardDetailLevel,
     specCreatingForProject,
     setSpecCreatingForProject,
+    getCurrentWorktree,
   } = useAppStore();
   const shortcuts = useKeyboardShortcutsConfig();
   const {
@@ -80,6 +86,20 @@ export function BoardView() {
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [deleteCompletedFeature, setDeleteCompletedFeature] =
     useState<Feature | null>(null);
+
+  // Worktree dialog states
+  const [showCreateWorktreeDialog, setShowCreateWorktreeDialog] = useState(false);
+  const [showDeleteWorktreeDialog, setShowDeleteWorktreeDialog] = useState(false);
+  const [showCommitWorktreeDialog, setShowCommitWorktreeDialog] = useState(false);
+  const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
+  const [selectedWorktreeForAction, setSelectedWorktreeForAction] = useState<{
+    path: string;
+    branch: string;
+    isMain: boolean;
+    hasChanges?: boolean;
+    changedFilesCount?: number;
+  } | null>(null);
+  const [worktreeRefreshKey, setWorktreeRefreshKey] = useState(0);
 
   // Follow-up state hook
   const {
@@ -285,11 +305,15 @@ export function BoardView() {
     handleStartImplementation,
   });
 
+  // Get current worktree for filtering
+  const currentWorktree = currentProject ? getCurrentWorktree(currentProject.path) : null;
+
   // Use column features hook
   const { getColumnFeatures, completedFeatures } = useBoardColumnFeatures({
     features: hookFeatures,
     runningAutoTasks,
     searchQuery,
+    currentWorktree,
   });
 
   // Use background hook
@@ -339,6 +363,25 @@ export function BoardView() {
           description: "Add new feature",
         }}
         isMounted={isMounted}
+      />
+
+      {/* Worktree Selector */}
+      <WorktreeSelector
+        key={worktreeRefreshKey}
+        projectPath={currentProject.path}
+        onCreateWorktree={() => setShowCreateWorktreeDialog(true)}
+        onDeleteWorktree={(worktree) => {
+          setSelectedWorktreeForAction(worktree);
+          setShowDeleteWorktreeDialog(true);
+        }}
+        onCommit={(worktree) => {
+          setSelectedWorktreeForAction(worktree);
+          setShowCommitWorktreeDialog(true);
+        }}
+        onCreatePR={(worktree) => {
+          setSelectedWorktreeForAction(worktree);
+          setShowCreatePRDialog(true);
+        }}
       />
 
       {/* Main Content Area */}
@@ -492,6 +535,48 @@ export function BoardView() {
         setSuggestions={updateSuggestions}
         isGenerating={isGeneratingSuggestions}
         setIsGenerating={setIsGeneratingSuggestions}
+      />
+
+      {/* Create Worktree Dialog */}
+      <CreateWorktreeDialog
+        open={showCreateWorktreeDialog}
+        onOpenChange={setShowCreateWorktreeDialog}
+        projectPath={currentProject.path}
+        onCreated={() => setWorktreeRefreshKey((k) => k + 1)}
+      />
+
+      {/* Delete Worktree Dialog */}
+      <DeleteWorktreeDialog
+        open={showDeleteWorktreeDialog}
+        onOpenChange={setShowDeleteWorktreeDialog}
+        projectPath={currentProject.path}
+        worktree={selectedWorktreeForAction}
+        onDeleted={() => {
+          setWorktreeRefreshKey((k) => k + 1);
+          setSelectedWorktreeForAction(null);
+        }}
+      />
+
+      {/* Commit Worktree Dialog */}
+      <CommitWorktreeDialog
+        open={showCommitWorktreeDialog}
+        onOpenChange={setShowCommitWorktreeDialog}
+        worktree={selectedWorktreeForAction}
+        onCommitted={() => {
+          setWorktreeRefreshKey((k) => k + 1);
+          setSelectedWorktreeForAction(null);
+        }}
+      />
+
+      {/* Create PR Dialog */}
+      <CreatePRDialog
+        open={showCreatePRDialog}
+        onOpenChange={setShowCreatePRDialog}
+        worktree={selectedWorktreeForAction}
+        onCreated={() => {
+          setWorktreeRefreshKey((k) => k + 1);
+          setSelectedWorktreeForAction(null);
+        }}
       />
     </div>
   );

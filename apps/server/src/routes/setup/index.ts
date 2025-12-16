@@ -11,11 +11,13 @@ import { createDeleteApiKeyHandler } from "./routes/delete-api-key.js";
 import { createApiKeysHandler } from "./routes/api-keys.js";
 import { createPlatformHandler } from "./routes/platform.js";
 import { createVerifyClaudeAuthHandler } from "./routes/verify-claude-auth.js";
+import { createGhStatusHandler } from "./routes/gh-status.js";
 
 export function createSetupRoutes(): Router {
   const router = Router();
 
   router.get("/claude-status", createClaudeStatusHandler());
+  router.get("/gh-status", createGhStatusHandler());
   router.post("/install-claude", createInstallClaudeHandler());
   router.post("/auth-claude", createAuthClaudeHandler());
   router.post("/store-api-key", createStoreApiKeyHandler());

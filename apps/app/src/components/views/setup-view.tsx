@@ -7,6 +7,7 @@ import {
   WelcomeStep,
   CompleteStep,
   ClaudeSetupStep,
+  GhSetupStep,
 } from "./setup-view/steps";
 
 // Main Setup View
@@ -19,11 +20,12 @@ export function SetupView() {
   } = useSetupStore();
   const { setCurrentView } = useAppStore();
 
-  const steps = ["welcome", "claude", "complete"] as const;
+  const steps = ["welcome", "claude", "gh", "complete"] as const;
   type StepName = (typeof steps)[number];
   const getStepName = (): StepName => {
     if (currentStep === "claude_detect" || currentStep === "claude_auth")
       return "claude";
+    if (currentStep === "gh_setup") return "gh";
     if (currentStep === "welcome") return "welcome";
     return "complete";
   };
@@ -42,6 +44,10 @@ export function SetupView() {
         setCurrentStep("claude_detect");
         break;
       case "claude":
+        console.log("[Setup Flow] Moving to gh_setup step");
+        setCurrentStep("gh_setup");
+        break;
+      case "gh":
         console.log("[Setup Flow] Moving to complete step");
         setCurrentStep("complete");
         break;
@@ -54,12 +60,20 @@ export function SetupView() {
       case "claude":
         setCurrentStep("welcome");
         break;
+      case "gh":
+        setCurrentStep("claude_detect");
+        break;
     }
   };
 
   const handleSkipClaude = () => {
     console.log("[Setup Flow] Skipping Claude setup");
     setSkipClaudeSetup(true);
+    setCurrentStep("gh_setup");
+  };
+
+  const handleSkipGh = () => {
+    console.log("[Setup Flow] Skipping gh setup");
     setCurrentStep("complete");
   };
 
@@ -107,6 +121,14 @@ export function SetupView() {
                   onNext={() => handleNext("claude")}
                   onBack={() => handleBack("claude")}
                   onSkip={handleSkipClaude}
+                />
+              )}
+
+              {currentStep === "gh_setup" && (
+                <GhSetupStep
+                  onNext={() => handleNext("gh")}
+                  onBack={() => handleBack("gh")}
+                  onSkip={handleSkipGh}
                 />
               )}
 

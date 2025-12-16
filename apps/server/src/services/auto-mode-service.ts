@@ -32,6 +32,7 @@ interface Feature {
   priority?: number;
   spec?: string;
   model?: string; // Model to use for this feature
+  thinkingLevel?: string; // Thinking level for extended thinking ("none" | "low" | "medium" | "high" | "ultrathink")
   imagePaths?: Array<
     | string
     | {
@@ -178,23 +179,41 @@ export class AutoModeService {
 
   /**
    * Execute a single feature
+   * @param projectPath - The main project path
+   * @param featureId - The feature ID to execute
+   * @param useWorktrees - Whether to create a per-feature worktree (legacy mode)
+   * @param isAutoMode - Whether this is running in auto-mode loop
+   * @param existingWorktreePath - Optional path to an existing user-managed worktree
    */
   async executeFeature(
     projectPath: string,
     featureId: string,
     useWorktrees = true,
-    isAutoMode = false
+    isAutoMode = false,
+    existingWorktreePath?: string
   ): Promise<void> {
     if (this.runningFeatures.has(featureId)) {
       throw new Error(`Feature ${featureId} is already running`);
     }
 
     const abortController = new AbortController();
-    const branchName = `feature/${featureId}`;
     let worktreePath: string | null = null;
+    let branchName: string | null = null;
 
-    // Setup worktree if enabled
-    if (useWorktrees) {
+    // Use existing worktree if provided, otherwise create per-feature worktree if enabled
+    if (existingWorktreePath) {
+      worktreePath = existingWorktreePath;
+      // Get the branch name from the existing worktree
+      try {
+        const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD", {
+          cwd: existingWorktreePath,
+        });
+        branchName = stdout.trim();
+      } catch {
+        // Couldn't get branch name, not critical
+      }
+    } else if (useWorktrees) {
+      branchName = `feature/${featureId}`;
       worktreePath = await this.setupWorktree(
         projectPath,
         featureId,
@@ -243,20 +262,22 @@ export class AutoModeService {
         typeof img === "string" ? img : img.path
       );
 
-      // Get model from feature
+      // Get model and thinking level from feature
       const model = resolveModelString(feature.model, DEFAULT_MODELS.claude);
+      const thinkingLevel = feature.thinkingLevel;
       console.log(
-        `[AutoMode] Executing feature ${featureId} with model: ${model}`
+        `[AutoMode] Executing feature ${featureId} with model: ${model}, thinkingLevel: ${thinkingLevel || "none"}`
       );
 
-      // Run the agent with the feature's model and images
+      // Run the agent with the feature's model, images, and thinking level
       await this.runAgent(
         workDir,
         featureId,
         prompt,
         abortController,
         imagePaths,
-        model
+        model,
+        thinkingLevel
       );
 
       // Mark as waiting_approval for user review
@@ -444,10 +465,11 @@ Address the follow-up instructions above. Review the previous work and make the 
     });
 
     try {
-      // Get model from feature (already loaded above)
+      // Get model and thinking level from feature (already loaded above)
       const model = resolveModelString(feature?.model, DEFAULT_MODELS.claude);
+      const thinkingLevel = feature?.thinkingLevel;
       console.log(
-        `[AutoMode] Follow-up for feature ${featureId} using model: ${model}`
+        `[AutoMode] Follow-up for feature ${featureId} using model: ${model}, thinkingLevel: ${thinkingLevel || "none"}`
       );
 
       // Update feature status to in_progress
@@ -533,14 +555,15 @@ Address the follow-up instructions above. Review the previous work and make the 
         }
       }
 
-      // Use fullPrompt (already built above) with model and all images
+      // Use fullPrompt (already built above) with model, images, and thinking level
       await this.runAgent(
         workDir,
         featureId,
         fullPrompt,
         abortController,
         allImagePaths.length > 0 ? allImagePaths : imagePaths,
-        model
+        model,
+        thinkingLevel
       );
 
       // Mark as waiting_approval for user review
@@ -1083,13 +1106,15 @@ When done, summarize what you implemented and any notes for the developer.`;
     prompt: string,
     abortController: AbortController,
     imagePaths?: string[],
-    model?: string
+    model?: string,
+    thinkingLevel?: string
   ): Promise<void> {
     // Build SDK options using centralized configuration for feature implementation
     const sdkOptions = createAutoModeOptions({
       cwd: workDir,
       model: model,
       abortController,
+      thinkingLevel,
     });
 
     // Extract model, maxTurns, and allowedTools from SDK options
@@ -1097,8 +1122,15 @@ When done, summarize what you implemented and any notes for the developer.`;
     const maxTurns = sdkOptions.maxTurns;
     const allowedTools = sdkOptions.allowedTools as string[] | undefined;
 
+    // Log extended thinking configuration if enabled
+    const maxThinkingTokens = (sdkOptions as { maxThinkingTokens?: number })
+      .maxThinkingTokens;
     console.log(
-      `[AutoMode] runAgent called for feature ${featureId} with model: ${finalModel}`
+      `[AutoMode] runAgent called for feature ${featureId} with model: ${finalModel}${
+        maxThinkingTokens
+          ? `, extended thinking: ${maxThinkingTokens} tokens`
+          : ""
+      }`
     );
 
     // Get provider for this model

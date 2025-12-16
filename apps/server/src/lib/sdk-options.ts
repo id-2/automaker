@@ -19,6 +19,18 @@ import {
 } from "./model-resolver.js";
 
 /**
+ * Thinking level to max thinking tokens mapping
+ * These values control how much "thinking" budget the model gets for extended reasoning
+ */
+export const THINKING_LEVEL_TOKENS: Record<string, number | undefined> = {
+  none: undefined, // No extended thinking
+  low: 5000, // 5k tokens for light reasoning
+  medium: 10000, // 10k tokens for moderate reasoning
+  high: 20000, // 20k tokens for deep reasoning
+  ultrathink: 50000, // 50k tokens for very deep reasoning (ultrathink mode)
+} as const;
+
+/**
  * Tool presets for different use cases
  */
 export const TOOL_PRESETS = {
@@ -143,6 +155,9 @@ export interface CreateSdkOptionsConfig {
 
   /** Optional abort controller for cancellation */
   abortController?: AbortController;
+
+  /** Optional thinking level for extended reasoning ("none" | "low" | "medium" | "high" | "ultrathink") */
+  thinkingLevel?: string;
 }
 
 /**
@@ -247,8 +262,14 @@ export function createChatOptions(config: CreateSdkOptionsConfig): Options {
  * - Extended turns for thorough feature implementation
  * - Uses default model (can be overridden)
  * - Sandbox enabled for bash safety
+ * - Supports extended thinking via thinkingLevel parameter
  */
 export function createAutoModeOptions(config: CreateSdkOptionsConfig): Options {
+  // Get max thinking tokens from the thinking level
+  const maxThinkingTokens = config.thinkingLevel
+    ? THINKING_LEVEL_TOKENS[config.thinkingLevel]
+    : undefined;
+
   return {
     ...getBaseOptions(),
     model: getModelForUseCase("auto", config.model),
@@ -261,6 +282,7 @@ export function createAutoModeOptions(config: CreateSdkOptionsConfig): Options {
     },
     ...(config.systemPrompt && { systemPrompt: config.systemPrompt }),
     ...(config.abortController && { abortController: config.abortController }),
+    ...(maxThinkingTokens && { maxThinkingTokens }),
   };
 }
 

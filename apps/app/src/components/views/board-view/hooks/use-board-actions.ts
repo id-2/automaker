@@ -53,7 +53,7 @@ export function useBoardActions({
   inProgressFeaturesForShortcuts,
   outputFeature,
 }: UseBoardActionsProps) {
-  const { addFeature, updateFeature, removeFeature, moveFeature, useWorktrees } = useAppStore();
+  const { addFeature, updateFeature, removeFeature, moveFeature, useWorktrees, getCurrentWorktree } = useAppStore();
   const autoMode = useAutoMode();
 
   const handleAddFeature = useCallback(
@@ -155,14 +155,19 @@ export function useBoardActions({
           return;
         }
 
+        // Get the current selected worktree for this project
+        const currentWorktree = getCurrentWorktree(currentProject.path);
+
+        // If a worktree is selected, use it; otherwise fall back to per-feature worktrees
         const result = await api.autoMode.runFeature(
           currentProject.path,
           feature.id,
-          useWorktrees
+          currentWorktree ? false : useWorktrees, // Don't create per-feature worktree if using a selected one
+          currentWorktree || undefined // Pass the selected worktree path
         );
 
         if (result.success) {
-          console.log("[Board] Feature run started successfully");
+          console.log("[Board] Feature run started successfully", currentWorktree ? `in worktree: ${currentWorktree}` : "");
         } else {
           console.error("[Board] Failed to run feature:", result.error);
           await loadFeatures();
@@ -172,11 +177,13 @@ export function useBoardActions({
         await loadFeatures();
       }
     },
-    [currentProject, useWorktrees, loadFeatures]
+    [currentProject, useWorktrees, getCurrentWorktree, loadFeatures]
   );
 
   const handleStartImplementation = useCallback(
     async (feature: Feature) => {
+      if (!currentProject) return false;
+
       if (!autoMode.canStartNewTask) {
         toast.error("Concurrency limit reached", {
           description: `You can only have ${autoMode.maxConcurrency} task${
@@ -186,17 +193,27 @@ export function useBoardActions({
         return false;
       }
 
-      const updates = {
+      // Get the current selected worktree for this project
+      const currentWorktree = getCurrentWorktree(currentProject.path);
+      const worktrees = useAppStore.getState().getWorktrees(currentProject.path);
+      const selectedWorktreeInfo = worktrees.find(
+        (w) => currentWorktree ? w.path === currentWorktree : w.isMain
+      );
+
+      const updates: Partial<Feature> = {
         status: "in_progress" as const,
         startedAt: new Date().toISOString(),
+        // Store the worktree path and branch on the feature for tracking
+        worktreePath: currentWorktree || undefined,
+        branchName: selectedWorktreeInfo?.branch || undefined,
       };
       updateFeature(feature.id, updates);
       persistFeatureUpdate(feature.id, updates);
-      console.log("[Board] Feature moved to in_progress, starting agent...");
+      console.log("[Board] Feature moved to in_progress, starting agent...", currentWorktree ? `in worktree: ${currentWorktree}` : "");
       await handleRunFeature(feature);
       return true;
     },
-    [autoMode, updateFeature, persistFeatureUpdate, handleRunFeature]
+    [currentProject, autoMode, updateFeature, persistFeatureUpdate, handleRunFeature, getCurrentWorktree]
   );
 
   const handleVerifyFeature = useCallback(

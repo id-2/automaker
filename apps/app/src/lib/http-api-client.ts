@@ -413,6 +413,13 @@ export class HttpApiClient implements ElectronAPI {
       error?: string;
     }> => this.get("/api/setup/claude-status"),
 
+    getGhStatus: (): Promise<{
+      success: boolean;
+      installed: boolean;
+      version?: string;
+      error?: string;
+    }> => this.get("/api/setup/gh-status"),
+
     installClaude: (): Promise<{
       success: boolean;
       message?: string;
@@ -509,12 +516,14 @@ export class HttpApiClient implements ElectronAPI {
     runFeature: (
       projectPath: string,
       featureId: string,
-      useWorktrees?: boolean
+      useWorktrees?: boolean,
+      worktreePath?: string
     ) =>
       this.post("/api/auto-mode/run-feature", {
         projectPath,
         featureId,
         useWorktrees,
+        worktreePath,
       }),
     verifyFeature: (projectPath: string, featureId: string) =>
       this.post("/api/auto-mode/verify-feature", { projectPath, featureId }),
@@ -558,6 +567,24 @@ export class HttpApiClient implements ElectronAPI {
       this.post("/api/worktree/status", { projectPath, featureId }),
     list: (projectPath: string) =>
       this.post("/api/worktree/list", { projectPath }),
+    listAll: (projectPath: string, includeDetails?: boolean) =>
+      this.post("/api/worktree/list", { projectPath, includeDetails }),
+    create: (projectPath: string, branchName: string, baseBranch?: string) =>
+      this.post("/api/worktree/create", { projectPath, branchName, baseBranch }),
+    delete: (projectPath: string, worktreePath: string, deleteBranch?: boolean) =>
+      this.post("/api/worktree/delete", { projectPath, worktreePath, deleteBranch }),
+    commit: (worktreePath: string, message: string) =>
+      this.post("/api/worktree/commit", { worktreePath, message }),
+    push: (worktreePath: string, force?: boolean) =>
+      this.post("/api/worktree/push", { worktreePath, force }),
+    createPR: (worktreePath: string, options?: {
+      commitMessage?: string;
+      prTitle?: string;
+      prBody?: string;
+      baseBranch?: string;
+      draft?: boolean;
+    }) =>
+      this.post("/api/worktree/create-pr", { worktreePath, ...options }),
     getDiffs: (projectPath: string, featureId: string) =>
       this.post("/api/worktree/diffs", { projectPath, featureId }),
     getFileDiff: (projectPath: string, featureId: string, filePath: string) =>
