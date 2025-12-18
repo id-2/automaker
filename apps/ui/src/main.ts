@@ -364,14 +364,20 @@ app.on("before-quit", () => {
 
 // Native file dialogs
 ipcMain.handle("dialog:openDirectory", async () => {
-  const result = await dialog.showOpenDialog(mainWindow!, {
+  if (!mainWindow) {
+    return { canceled: true, filePaths: [] };
+  }
+  const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openDirectory", "createDirectory"],
   });
   return result;
 });
 
 ipcMain.handle("dialog:openFile", async (_, options = {}) => {
-  const result = await dialog.showOpenDialog(mainWindow!, {
+  if (!mainWindow) {
+    return { canceled: true, filePaths: [] };
+  }
+  const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openFile"],
     ...options,
   });
@@ -379,7 +385,10 @@ ipcMain.handle("dialog:openFile", async (_, options = {}) => {
 });
 
 ipcMain.handle("dialog:saveFile", async (_, options = {}) => {
-  const result = await dialog.showSaveDialog(mainWindow!, options);
+  if (!mainWindow) {
+    return { canceled: true, filePath: undefined };
+  }
+  const result = await dialog.showSaveDialog(mainWindow, options);
   return result;
 });
 

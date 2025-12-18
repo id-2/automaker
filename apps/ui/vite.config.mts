@@ -61,7 +61,7 @@ export default defineConfig(({ command }) => {
       },
     },
     server: {
-      port: 3007,
+      port: parseInt(process.env.TEST_PORT || "3007", 10),
     },
     build: {
       outDir: "dist",
