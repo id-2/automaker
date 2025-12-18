@@ -88,7 +88,7 @@ describe("sdk-options.ts", () => {
       expect(options.cwd).toBe("/test/path");
       expect(options.maxTurns).toBe(MAX_TURNS.maximum);
       expect(options.allowedTools).toEqual([...TOOL_PRESETS.specGeneration]);
-      expect(options.permissionMode).toBe("acceptEdits");
+      expect(options.permissionMode).toBe("default");
     });
 
     it("should include system prompt when provided", async () => {
