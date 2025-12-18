@@ -66,22 +66,31 @@ CRITICAL FORMATTING REQUIREMENTS:
 - Your ENTIRE response MUST be valid XML following the exact template structure above
 - Do NOT use markdown formatting (no # headers, no **bold**, no - lists, etc.)
 - Do NOT include any explanatory text, prefix, or suffix outside the XML tags
-- Do NOT include phrases like "Based on my analysis..." or "I'll create..." before the XML
+- Do NOT include phrases like "Based on my analysis...", "I'll create...", "Now I have enough information...", "Let me generate...", or any similar introductory statements
 - Do NOT include any text before <project_specification> or after </project_specification>
-- Your response must start IMMEDIATELY with <project_specification> with no preceding text
-- Your response must end IMMEDIATELY with </project_specification> with no following text
+- Your response must start IMMEDIATELY with <project_specification> with no preceding text, spaces, or newlines
+- Your response must end IMMEDIATELY with </project_specification> with no following text, spaces, or newlines
 - Use ONLY XML tags as shown in the template
 - Properly escape XML special characters (&lt; for <, &gt; for >, &amp; for &)
 - Maintain 2-space indentation for readability
 - The output will be saved directly to app_spec.txt and must be parseable as valid XML
 - The response must contain exactly ONE root XML element: <project_specification>
 - Do not include code blocks, markdown fences, or any other formatting
+- Do not write any commentary, analysis, or explanations - ONLY output the XML
+
+STRICT OUTPUT RULE:
+Your response must be EXACTLY this format with NO additions:
+<project_specification>
+  ...XML content...
+</project_specification>
+
+Nothing before it. Nothing after it. No explanations. No commentary. No "Let me..." statements. Just the XML.
 
 VERIFICATION: Before responding, verify that:
-1. Your response starts with <project_specification> (no spaces, no text before it)
-2. Your response ends with </project_specification> (no spaces, no text after it)
+1. Your response starts with <project_specification> (no spaces, no text, no newlines before it)
+2. Your response ends with </project_specification> (no spaces, no text, no newlines after it)
 3. There is exactly one root XML element
-4. There is no explanatory text, analysis, or commentary outside the XML tags
+4. There is NO explanatory text, analysis, commentary, or introductory statements anywhere
 
 Your response should be ONLY the XML content, nothing else.
 `;

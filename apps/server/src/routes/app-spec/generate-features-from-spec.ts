@@ -63,24 +63,9 @@ Generate a prioritized list of implementable features. For each feature provide:
 6. **complexity**: "simple", "moderate", or "complex"
 7. **dependencies**: Array of feature IDs this depends on (can be empty)
 
-Format as JSON:
-{
-  "features": [
-    {
-      "id": "feature-id",
-      "category": "Feature Category",
-      "title": "Feature Title",
-      "description": "What it does",
-      "priority": 1,
-      "complexity": "moderate",
-      "dependencies": []
-    }
-  ]
-}
-
 Generate ${featureCount} features that build on each other logically.
 
-IMPORTANT: Do not ask for clarification. The specification is provided above. Generate the JSON immediately.`;
+IMPORTANT: Do not ask for clarification. The specification is provided above. Generate the features immediately. The output will be automatically formatted as structured JSON.`;
 
   logger.info("========== PROMPT BEING SENT ==========");
   logger.info(`Prompt length: ${prompt.length} chars`);
@@ -115,6 +100,7 @@ IMPORTANT: Do not ask for clarification. The specification is provided above. Ge
     throw queryError;
   }
 
+  let structuredOutput: any = null;
   let responseText = "";
   let messageCount = 0;
 
@@ -146,9 +132,21 @@ IMPORTANT: Do not ask for clarification. The specification is provided above. Ge
             });
           }
         }
-      } else if (msg.type === "result" && (msg as any).subtype === "success") {
-        logger.debug("Received success result for features");
-        responseText = (msg as any).result || responseText;
+      } else if (msg.type === "result") {
+        logger.debug(`Received result message: subtype=${(msg as any).subtype}`);
+        // Check for structured_output first (from JSON schema enforcement)
+        // structured_output is available on result messages when outputFormat is used
+        if ((msg as any).structured_output) {
+          structuredOutput = (msg as any).structured_output;
+          logger.info("✓ Received structured_output from SDK");
+          logger.info(
+            `Structured output: ${JSON.stringify(structuredOutput, null, 2)}`
+          );
+        } else if ((msg as any).subtype === "success") {
+          // Fallback to text result if structured_output not available
+          responseText = (msg as any).result || responseText;
+          logger.info("No structured_output found, using text result");
+        }
       } else if ((msg as { type: string }).type === "error") {
         logger.error("❌ Received error message from feature stream:");
         logger.error("Error message:", JSON.stringify(msg, null, 2));
@@ -161,12 +159,17 @@ IMPORTANT: Do not ask for clarification. The specification is provided above. Ge
   }
 
   logger.info(`Feature stream complete. Total messages: ${messageCount}`);
-  logger.info(`Feature response length: ${responseText.length} chars`);
-  logger.info("========== FULL RESPONSE TEXT ==========");
-  logger.info(responseText);
-  logger.info("========== END RESPONSE TEXT ==========");
-
-  await parseAndCreateFeatures(projectPath, responseText, events);
+  
+  if (structuredOutput) {
+    logger.info("Using structured_output for feature parsing");
+    await parseAndCreateFeatures(projectPath, structuredOutput, events);
+  } else {
+    logger.info(`Feature response length: ${responseText.length} chars`);
+    logger.info("========== FULL RESPONSE TEXT ==========");
+    logger.info(responseText);
+    logger.info("========== END RESPONSE TEXT ==========");
+    await parseAndCreateFeatures(projectPath, responseText, events);
+  }
 
   logger.debug("========== generateFeaturesFromSpec() completed ==========");
 }

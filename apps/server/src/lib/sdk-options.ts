@@ -17,6 +17,7 @@ import {
   DEFAULT_MODELS,
   CLAUDE_MODEL_MAP,
 } from "./model-resolver.js";
+import { FEATURE_GENERATION_SCHEMA } from "./feature-schema.js";
 
 /**
  * Tool presets for different use cases
@@ -174,6 +175,7 @@ export function createSpecGenerationOptions(
  * - Uses read-only tools (just needs to read the spec)
  * - Quick turns since it's mostly JSON generation
  * - Sonnet model by default for speed
+ * - Enforces structured JSON output using JSON schema
  */
 export function createFeatureGenerationOptions(
   config: CreateSdkOptionsConfig
@@ -184,6 +186,10 @@ export function createFeatureGenerationOptions(
     maxTurns: MAX_TURNS.quick,
     cwd: config.cwd,
     allowedTools: [...TOOL_PRESETS.readOnly],
+    outputFormat: {
+      type: "json_schema",
+      schema: FEATURE_GENERATION_SCHEMA,
+    },
     ...(config.systemPrompt && { systemPrompt: config.systemPrompt }),
     ...(config.abortController && { abortController: config.abortController }),
   };

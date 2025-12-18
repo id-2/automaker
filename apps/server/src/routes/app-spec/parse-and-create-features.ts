@@ -12,33 +12,44 @@ const logger = createLogger("SpecRegeneration");
 
 export async function parseAndCreateFeatures(
   projectPath: string,
-  content: string,
+  content: string | object,
   events: EventEmitter
 ): Promise<void> {
   logger.info("========== parseAndCreateFeatures() started ==========");
-  logger.info(`Content length: ${content.length} chars`);
-  logger.info("========== CONTENT RECEIVED FOR PARSING ==========");
-  logger.info(content);
-  logger.info("========== END CONTENT ==========");
-
+  
+  let parsed: { features: any[] };
+  
   try {
-    // Extract JSON from response
-    logger.info("Extracting JSON from response...");
-    logger.info(`Looking for pattern: /{[\\s\\S]*"features"[\\s\\S]*}/`);
-    const jsonMatch = content.match(/\{[\s\S]*"features"[\s\S]*\}/);
-    if (!jsonMatch) {
-      logger.error("❌ No valid JSON found in response");
-      logger.error("Full content received:");
-      logger.error(content);
-      throw new Error("No valid JSON found in response");
+    // Check if content is already a parsed object (from structured_output)
+    if (typeof content === "object" && content !== null) {
+      logger.info("Content is already a structured object (from structured_output)");
+      logger.info("Structured content:", JSON.stringify(content, null, 2));
+      parsed = content as { features: any[] };
+    } else {
+      // Extract JSON from text response (fallback for compatibility)
+      logger.info(`Content length: ${typeof content === "string" ? content.length : "N/A"} chars`);
+      logger.info("========== CONTENT RECEIVED FOR PARSING ==========");
+      logger.info(typeof content === "string" ? content : JSON.stringify(content, null, 2));
+      logger.info("========== END CONTENT ==========");
+      
+      logger.info("Extracting JSON from text response...");
+      logger.info(`Looking for pattern: /{[\\s\\S]*"features"[\\s\\S]*}/`);
+      const jsonMatch = (content as string).match(/\{[\s\S]*"features"[\s\S]*\}/);
+      if (!jsonMatch) {
+        logger.error("❌ No valid JSON found in response");
+        logger.error("Full content received:");
+        logger.error(typeof content === "string" ? content : JSON.stringify(content, null, 2));
+        throw new Error("No valid JSON found in response");
+      }
+
+      logger.info(`JSON match found (${jsonMatch[0].length} chars)`);
+      logger.info("========== MATCHED JSON ==========");
+      logger.info(jsonMatch[0]);
+      logger.info("========== END MATCHED JSON ==========");
+
+      parsed = JSON.parse(jsonMatch[0]);
     }
-
-    logger.info(`JSON match found (${jsonMatch[0].length} chars)`);
-    logger.info("========== MATCHED JSON ==========");
-    logger.info(jsonMatch[0]);
-    logger.info("========== END MATCHED JSON ==========");
-
-    const parsed = JSON.parse(jsonMatch[0]);
+    
     logger.info(`Parsed ${parsed.features?.length || 0} features`);
     logger.info("Parsed features:", JSON.stringify(parsed.features, null, 2));
 

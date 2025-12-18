@@ -66,7 +66,9 @@ ${techStackDefaults}
 
 ${analysisInstructions}
 
-${getAppSpecFormatInstruction()}`;
+${getAppSpecFormatInstruction()}
+
+REMEMBER: Output ONLY the XML. Do not write any text before or after the XML tags. Start directly with <project_specification> and end with </project_specification>.`;
 
   logger.info("========== PROMPT BEING SENT ==========");
   logger.info(`Prompt length: ${prompt.length} chars`);
@@ -210,14 +212,39 @@ ${getAppSpecFormatInstruction()}`;
     logger.error("❌ WARNING: responseText is empty! Nothing to save.");
   }
 
+  // Clean up response: extract only the XML content
+  // Remove any text before <project_specification> and after </project_specification>
+  let cleanedResponse = responseText.trim();
+  
+  const xmlStartIndex = cleanedResponse.indexOf("<project_specification>");
+  const xmlEndIndex = cleanedResponse.lastIndexOf("</project_specification>");
+  
+  if (xmlStartIndex !== -1 && xmlEndIndex !== -1 && xmlEndIndex > xmlStartIndex) {
+    // Extract XML content including the closing tag
+    const closingTagLength = "</project_specification>".length;
+    cleanedResponse = cleanedResponse.substring(
+      xmlStartIndex,
+      xmlEndIndex + closingTagLength
+    ).trim();
+    
+    const removedChars = responseText.length - cleanedResponse.length;
+    if (removedChars > 0) {
+      logger.info(`✓ Cleaned response: removed ${removedChars} chars before/after XML`);
+      logger.debug(`Original length: ${responseText.length}, cleaned length: ${cleanedResponse.length}`);
+    }
+  } else {
+    logger.warn("⚠️ Could not find XML boundaries, using original response");
+    logger.debug(`xmlStartIndex: ${xmlStartIndex}, xmlEndIndex: ${xmlEndIndex}`);
+  }
+
   // Save spec to .automaker directory
   const specDir = await ensureAutomakerDir(projectPath);
   const specPath = getAppSpecPath(projectPath);
 
   logger.info("Saving spec to:", specPath);
-  logger.info(`Content to save (${responseText.length} chars)`);
+  logger.info(`Content to save (${cleanedResponse.length} chars)`);
 
-  await fs.writeFile(specPath, responseText);
+  await fs.writeFile(specPath, cleanedResponse);
 
   // Verify the file was written
   const savedContent = await fs.readFile(specPath, "utf-8");
