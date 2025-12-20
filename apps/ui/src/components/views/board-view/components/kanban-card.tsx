@@ -51,6 +51,8 @@ import {
   MoreVertical,
   AlertCircle,
   GitBranch,
+  GitPullRequest,
+  ExternalLink,
   ChevronDown,
   ChevronUp,
   Brain,
@@ -696,6 +698,32 @@ export const KanbanCard = memo(function KanbanCard({
           </div>
         )}
 
+        {/* PR URL Display */}
+        {typeof feature.prUrl === "string" &&
+          /^https?:\/\//i.test(feature.prUrl) && (() => {
+            const prNumber = feature.prUrl.split('/').pop();
+            return (
+              <div className="mb-2">
+                <a
+                  href={feature.prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 text-[11px] text-purple-500 hover:text-purple-400 transition-colors"
+                  title={feature.prUrl}
+                  data-testid={`pr-url-${feature.id}`}
+                >
+                  <GitPullRequest className="w-3 h-3 shrink-0" />
+                  <span className="truncate max-w-[150px]">
+                    {prNumber ? `Pull Request #${prNumber}` : 'Pull Request'}
+                  </span>
+                  <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                </a>
+              </div>
+            );
+          })()}
+
         {/* Steps Preview */}
         {showSteps && feature.steps && feature.steps.length > 0 && (
           <div className="mb-3 space-y-1.5">
@@ -1079,7 +1107,23 @@ export const KanbanCard = memo(function KanbanCard({
                   <span className="truncate">Refine</span>
                 </Button>
               )}
-              {onCommit && (
+              {/* Show Verify button if PR was created (changes are committed), otherwise show Commit button */}
+              {feature.prUrl && onManualVerify ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 h-7 text-[11px]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onManualVerify();
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  data-testid={`verify-${feature.id}`}
+                >
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Verify
+                </Button>
+              ) : onCommit ? (
                 <Button
                   variant="default"
                   size="sm"
@@ -1094,7 +1138,7 @@ export const KanbanCard = memo(function KanbanCard({
                   <GitCommit className="w-3 h-3 mr-1" />
                   Commit
                 </Button>
-              )}
+              ) : null}
             </>
           )}
           {!isCurrentAutoTask && feature.status === "backlog" && (

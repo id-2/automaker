@@ -10,6 +10,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { existsSync } from "fs";
 import { isGitRepo, getErrorMessage, logError, normalizePath } from "../common.js";
+import { readAllWorktreeMetadata, type WorktreePRInfo } from "../../../lib/worktree-metadata.js";
 
 const execAsync = promisify(exec);
 
@@ -21,6 +22,7 @@ interface WorktreeInfo {
   hasWorktree: boolean; // Always true for items in this list
   hasChanges?: boolean;
   changedFilesCount?: number;
+  pr?: WorktreePRInfo; // PR info if a PR has been created for this branch
 }
 
 async function getCurrentBranch(cwd: string): Promise<string> {
@@ -106,6 +108,9 @@ export function createListHandler() {
         }
       }
 
+      // Read all worktree metadata to get PR info
+      const allMetadata = await readAllWorktreeMetadata(projectPath);
+
       // If includeDetails is requested, fetch change status for each worktree
       if (includeDetails) {
         for (const worktree of worktrees) {
@@ -124,6 +129,14 @@ export function createListHandler() {
             worktree.hasChanges = false;
             worktree.changedFilesCount = 0;
           }
+        }
+      }
+
+      // Add PR info from metadata for each worktree
+      for (const worktree of worktrees) {
+        const metadata = allMetadata.get(worktree.branch);
+        if (metadata?.pr) {
+          worktree.pr = metadata.pr;
         }
       }
 

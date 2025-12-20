@@ -1353,6 +1353,17 @@ function createMockWorktreeAPI(): WorktreeAPI {
         },
       };
     },
+
+    getPRInfo: async (worktreePath: string, branchName: string) => {
+      console.log("[Mock] Getting PR info:", { worktreePath, branchName });
+      return {
+        success: true,
+        result: {
+          hasPR: false,
+          ghCliAvailable: false,
+        },
+      };
+    },
   };
 }
 
