@@ -128,6 +128,7 @@ export function BoardView() {
     changedFilesCount?: number;
   } | null>(null);
   const [worktreeRefreshKey, setWorktreeRefreshKey] = useState(0);
+  const [branchToAutoSelect, setBranchToAutoSelect] = useState<string | null>(null);
 
   // Follow-up state hook
   const {
@@ -373,6 +374,21 @@ export function BoardView() {
   const selectedWorktreeBranch =
     currentWorktreeBranch || worktrees.find((w) => w.isMain)?.branch || "main";
 
+  // Auto-select worktree after creation
+  useEffect(() => {
+    if (branchToAutoSelect && worktrees.length > 0 && currentProject) {
+      const worktreeToSelect = worktrees.find((w) => w.branch === branchToAutoSelect);
+      if (worktreeToSelect) {
+        setCurrentWorktree(
+          currentProject.path,
+          worktreeToSelect.isMain ? null : worktreeToSelect.path,
+          worktreeToSelect.branch
+        );
+        setBranchToAutoSelect(null); // Clear after selecting
+      }
+    }
+  }, [branchToAutoSelect, worktrees, currentProject, setCurrentWorktree]);
+
   // Extract all action handlers into a hook
   const {
     handleAddFeature,
@@ -417,7 +433,12 @@ export function BoardView() {
     inProgressFeaturesForShortcuts,
     outputFeature,
     projectPath: currentProject?.path || null,
-    onWorktreeCreated: () => setWorktreeRefreshKey((k) => k + 1),
+    onWorktreeCreated: (branchName?: string) => {
+      setWorktreeRefreshKey((k) => k + 1);
+      if (branchName) {
+        setBranchToAutoSelect(branchName);
+      }
+    },
     currentWorktreeBranch,
   });
 

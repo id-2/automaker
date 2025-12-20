@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAppStore } from "@/store/app-store";
 import { getElectronAPI } from "@/lib/electron";
 import { pathsEqual } from "@/lib/utils";
@@ -58,14 +58,25 @@ export function useWorktrees({ projectPath, refreshTrigger = 0, onRemovedWorktre
     }
   }, [refreshTrigger, fetchWorktrees, onRemovedWorktrees]);
 
+  // Use a ref to track the current worktree to avoid running validation
+  // when selection changes (which could cause a race condition with stale worktrees list)
+  const currentWorktreeRef = useRef(currentWorktree);
+  useEffect(() => {
+    currentWorktreeRef.current = currentWorktree;
+  }, [currentWorktree]);
+
+  // Validation effect: only runs when worktrees list changes (not on selection change)
+  // This prevents a race condition where the selection is reset because the
+  // local worktrees state hasn't been updated yet from the async fetch
   useEffect(() => {
     if (worktrees.length > 0) {
-      const currentPath = currentWorktree?.path;
+      const current = currentWorktreeRef.current;
+      const currentPath = current?.path;
       const currentWorktreeExists = currentPath === null
         ? true
         : worktrees.some((w) => !w.isMain && pathsEqual(w.path, currentPath));
 
-      if (currentWorktree == null || (currentPath !== null && !currentWorktreeExists)) {
+      if (current == null || (currentPath !== null && !currentWorktreeExists)) {
         // Find the primary worktree and get its branch name
         // Fallback to "main" only if worktrees haven't loaded yet
         const mainWorktree = worktrees.find((w) => w.isMain);
@@ -73,7 +84,7 @@ export function useWorktrees({ projectPath, refreshTrigger = 0, onRemovedWorktre
         setCurrentWorktree(projectPath, null, mainBranch);
       }
     }
-  }, [worktrees, currentWorktree, projectPath, setCurrentWorktree]);
+  }, [worktrees, projectPath, setCurrentWorktree]);
 
   const handleSelectWorktree = useCallback(
     (worktree: WorktreeInfo) => {

@@ -846,6 +846,61 @@ test.describe("Worktree Integration Tests", () => {
     expect(featureData.status).toBe("backlog");
   });
 
+  test("should auto-select worktree after creating feature with new branch", async ({
+    page,
+  }) => {
+    await setupProjectWithPath(page, testRepo.path);
+    await page.goto("/");
+    await waitForNetworkIdle(page);
+    await waitForBoardView(page);
+
+    // Use a branch name that doesn't exist yet
+    const branchName = "feature/auto-select-worktree";
+
+    // Verify branch does NOT exist before we create the feature
+    const branchesBefore = await listBranches(testRepo.path);
+    expect(branchesBefore).not.toContain(branchName);
+
+    // Click add feature button
+    await clickAddFeature(page);
+
+    // Fill in the feature details with the new branch
+    await fillAddFeatureDialog(page, "Feature with auto-select worktree", {
+      branch: branchName,
+      category: "Testing",
+    });
+
+    // Confirm
+    await confirmAddFeature(page);
+
+    // Wait for feature to be saved, worktree to be created, and UI to auto-select it
+    await page.waitForTimeout(3000);
+
+    // Verify branch WAS created
+    const branchesAfter = await listBranches(testRepo.path);
+    expect(branchesAfter).toContain(branchName);
+
+    // Verify worktree was created
+    const worktreePath = getWorktreePath(testRepo.path, branchName);
+    expect(fs.existsSync(worktreePath)).toBe(true);
+
+    // Verify the worktree button for the new branch is selected (has primary variant styling)
+    // Wait for the worktree selector to update
+    await page.waitForTimeout(1000);
+
+    // Find the worktree button for the branch we just created
+    // Use .first() to get the worktree button (not the kanban card)
+    const worktreeButton = page
+      .getByRole("button", {
+        name: new RegExp(branchName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+      })
+      .first();
+    await expect(worktreeButton).toBeVisible({ timeout: 10000 });
+
+    // Verify the button is selected (has bg-primary class)
+    await expect(worktreeButton).toHaveClass(/bg-primary/, { timeout: 5000 });
+  });
+
   test("should reset feature branch and worktree when worktree is deleted", async ({
     page,
   }) => {

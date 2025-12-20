@@ -40,7 +40,7 @@ interface UseBoardActionsProps {
   inProgressFeaturesForShortcuts: Feature[];
   outputFeature: Feature | null;
   projectPath: string | null;
-  onWorktreeCreated?: () => void;
+  onWorktreeCreated?: (branchName?: string) => void;
   currentWorktreeBranch: string | null; // Branch name of the selected worktree for filtering
 }
 
@@ -114,14 +114,14 @@ export function useBoardActions({
               currentProject.path,
               finalBranchName
             );
-            if (result.success) {
+            if (result.success && result.worktree) {
               console.log(
                 `[Board] Worktree for branch "${finalBranchName}" ${
                   result.worktree?.isNew ? "created" : "already exists"
                 }`
               );
-              // Refresh worktree list in UI
-              onWorktreeCreated?.();
+              // Refresh worktree list in UI and auto-select the newly created worktree
+              onWorktreeCreated?.(finalBranchName);
             } else {
               console.error(
                 `[Board] Failed to create worktree for branch "${finalBranchName}":`,
@@ -219,8 +219,8 @@ export function useBoardActions({
                   result.worktree?.isNew ? "created" : "already exists"
                 }`
               );
-              // Refresh worktree list in UI
-              onWorktreeCreated?.();
+              // Refresh worktree list in UI and auto-select the newly created worktree
+              onWorktreeCreated?.(finalBranchName);
             } else {
               console.error(
                 `[Board] Failed to create worktree for branch "${finalBranchName}":`,
