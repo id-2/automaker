@@ -5,18 +5,25 @@
 import type { Request, Response } from "express";
 import fs from "fs/promises";
 import path from "path";
-import { addAllowedPath, getAllowedRootDirectory } from "../../../lib/security.js";
+import {
+  addAllowedPath,
+  getAllowedRootDirectory,
+  getDataDirectory,
+} from "../../../lib/security.js";
 import { getErrorMessage, logError } from "../common.js";
 
 export function createConfigHandler() {
   return async (_req: Request, res: Response): Promise<void> => {
     try {
       const allowedRootDirectory = getAllowedRootDirectory();
+      const dataDirectory = getDataDirectory();
 
       if (!allowedRootDirectory) {
+        // When ALLOWED_ROOT_DIRECTORY is not set, return DATA_DIR as default directory
         res.json({
           success: true,
           configured: false,
+          defaultDir: dataDirectory || null,
         });
         return;
       }
@@ -41,6 +48,7 @@ export function createConfigHandler() {
           success: true,
           configured: true,
           workspaceDir: resolvedWorkspaceDir,
+          defaultDir: resolvedWorkspaceDir,
         });
       } catch {
         res.json({

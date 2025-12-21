@@ -23,21 +23,27 @@ let allowedRootDirectory: string | null = null;
 // Data directory - always allowed for settings/credentials
 let dataDirectory: string | null = null;
 
-// Allowed project directories - kept for backward compatibility and API compatibility
+// Allowed paths set - stores ALLOWED_ROOT_DIRECTORY and DATA_DIR
 const allowedPaths = new Set<string>();
 
 /**
  * Initialize security settings from environment variables
  * - ALLOWED_ROOT_DIRECTORY: main security boundary
  * - DATA_DIR: appData exception, always allowed
- * - ALLOWED_PROJECT_DIRS: legacy variable, stored for compatibility
  */
 export function initAllowedPaths(): void {
-  // Load ALLOWED_ROOT_DIRECTORY (new single variable)
+  // Load ALLOWED_ROOT_DIRECTORY
   const rootDir = process.env.ALLOWED_ROOT_DIRECTORY;
   if (rootDir) {
     allowedRootDirectory = path.resolve(rootDir);
     allowedPaths.add(allowedRootDirectory);
+    console.log(
+      `[Security] ✓ ALLOWED_ROOT_DIRECTORY configured: ${allowedRootDirectory}`
+    );
+  } else {
+    console.log(
+      "[Security] ⚠️  ALLOWED_ROOT_DIRECTORY not set - allowing access to all paths"
+    );
   }
 
   // Load DATA_DIR (appData exception - always allowed)
@@ -45,17 +51,7 @@ export function initAllowedPaths(): void {
   if (dataDir) {
     dataDirectory = path.resolve(dataDir);
     allowedPaths.add(dataDirectory);
-  }
-
-  // Load legacy ALLOWED_PROJECT_DIRS for backward compatibility during transition
-  const dirs = process.env.ALLOWED_PROJECT_DIRS;
-  if (dirs) {
-    for (const dir of dirs.split(",")) {
-      const trimmed = dir.trim();
-      if (trimmed) {
-        allowedPaths.add(path.resolve(trimmed));
-      }
-    }
+    console.log(`[Security] ✓ DATA_DIR configured: ${dataDirectory}`);
   }
 }
 
@@ -68,19 +64,13 @@ export function addAllowedPath(filePath: string): void {
 }
 
 /**
- * Check if a path is allowed based on ALLOWED_ROOT_DIRECTORY and legacy ALLOWED_PROJECT_DIRS
+ * Check if a path is allowed based on ALLOWED_ROOT_DIRECTORY
  * Returns true if:
  * - Path is within ALLOWED_ROOT_DIRECTORY, OR
- * - Path is within any legacy allowed path (ALLOWED_PROJECT_DIRS), OR
  * - Path is within DATA_DIR (appData exception), OR
  * - No restrictions are configured (backward compatibility)
  */
 export function isPathAllowed(filePath: string): boolean {
-  // If no restrictions are configured, allow all paths (backward compatibility)
-  if (!allowedRootDirectory && allowedPaths.size === 0) {
-    return true;
-  }
-
   const resolvedPath = path.resolve(filePath);
 
   // Always allow appData directory (settings, credentials)
@@ -88,19 +78,21 @@ export function isPathAllowed(filePath: string): boolean {
     return true;
   }
 
-  // Allow if within ALLOWED_ROOT_DIRECTORY
-  if (allowedRootDirectory && isPathWithinDirectory(resolvedPath, allowedRootDirectory)) {
+  // If no ALLOWED_ROOT_DIRECTORY restriction is configured, allow all paths
+  // Note: DATA_DIR is checked above as an exception, but doesn't restrict other paths
+  if (!allowedRootDirectory) {
     return true;
   }
 
-  // Check legacy allowed paths (ALLOWED_PROJECT_DIRS)
-  for (const allowedPath of allowedPaths) {
-    if (isPathWithinDirectory(resolvedPath, allowedPath)) {
-      return true;
-    }
+  // Allow if within ALLOWED_ROOT_DIRECTORY
+  if (
+    allowedRootDirectory &&
+    isPathWithinDirectory(resolvedPath, allowedRootDirectory)
+  ) {
+    return true;
   }
 
-  // If any restrictions are configured but path doesn't match, deny
+  // If restrictions are configured but path doesn't match, deny
   return false;
 }
 
@@ -132,10 +124,7 @@ export function isPathWithinDirectory(
   // If relative path starts with "..", it's outside the directory
   // If relative path is absolute, it's outside the directory
   // If relative path is empty or ".", it's the directory itself
-  return (
-    !relativePath.startsWith("..") &&
-    !path.isAbsolute(relativePath)
-  );
+  return !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
 }
 
 /**
