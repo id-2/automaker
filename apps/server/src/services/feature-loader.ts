@@ -477,8 +477,8 @@ export class FeatureLoader {
   async getPending(projectPath: string): Promise<Feature[]> {
     try {
       const allFeatures = await this.getAll(projectPath);
-      const pendingFeatures = allFeatures.filter((f) =>
-        ['pending', 'ready', 'backlog'].includes(f.status)
+      const pendingFeatures = allFeatures.filter(
+        (f) => f.status && ['pending', 'ready', 'backlog'].includes(f.status)
       );
 
       // Resolve dependencies and order features
